@@ -9,4 +9,4 @@
 1. Установи [Rust](https://rustup.rs/) (если ещё не установлен).  
 2. Выполни в терминале:  
    ```sh
-   cargo install tfile-rs
+   cargo install --git https://github.com/Geo123qwe/tfile-rs.git
