@@ -4,7 +4,7 @@ use clap::Parser;
 
 /// Утилита для вывода дерева папок
 #[derive(Parser)]
-#[clap(version = "1.0", author = "Твой ник")]
+#[clap(version = "1.0", author = "Geo123qwe")]
 struct Args {
     /// Путь к папке (по умолчанию — текущая)
     path: Option<String>,
