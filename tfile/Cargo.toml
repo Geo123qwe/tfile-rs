@@ -1,13 +1,9 @@
 [package]
 name = "tfile-rs"
-version = "1.0.2"
+version = "0.3.0"
 edition = "2021"
-license = "MIT"
-
-[[bin]]
-name = "tfile"
-path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }  # Для аргументов командной строки
-termcolor = "1.4"
+ansi_term = "0.12"  # Универсальная цветная библиотека
+atty = "0.2"        # Для определения поддержки цветов
+clap = { version = "4.0", features = ["derive"] }

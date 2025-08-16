@@ -1,48 +1,41 @@
 use std::{
     fs,
-    io::{self, Write},
+    io,
     path::{Path, PathBuf},
 };
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use ansi_term::Colour;
+use atty::Stream;
 use clap::Parser;
 
-/// Аргументы командной строки
 #[derive(Parser)]
 #[clap(version, author)]
 struct Args {
-    /// Путь к папке (по умолчанию — текущая)
-    path: Option<String>,
+    #[clap(default_value = ".")]
+    path: String,
 
-    /// Глубина рекурсии
     #[clap(short, long, default_value = "5")]
     depth: usize,
+
+    #[clap(long)]
+    no_color: bool,
 }
 
 fn main() {
     let args = Args::parse();
-    let path = args.path.as_deref().unwrap_or(".");
+    let use_color = !args.no_color && atty::is(Stream::Stdout);
 
-    println!("Структура папки: {}\n", Path::new(path).display());
-    if let Err(e) = print_tree(path, "", 0, args.depth) {
+    println!("Структура папки: {}\n", Path::new(&args.path).display());
+    if let Err(e) = print_tree(&args.path, "", 0, args.depth, use_color) {
         eprintln!("Ошибка: {}", e);
     }
 }
 
-/// Вывод цветного текста
-fn colored_print(text: &str, color: Color) -> io::Result<()> {
-    let mut stdout = StandardStream::stdout(ColorChoice::Always);
-    stdout.set_color(ColorSpec::new().set_fg(Some(color)))?;
-    writeln!(&mut stdout, "{}", text)?;
-    stdout.reset()?;
-    Ok(())
-}
-
-/// Рекурсивный вывод дерева папок
 fn print_tree(
     path: &str,
     prefix: &str,
     current_depth: usize,
     max_depth: usize,
+    use_color: bool,
 ) -> io::Result<()> {
     if current_depth >= max_depth {
         return Ok(());
@@ -53,7 +46,6 @@ fn print_tree(
         .filter_map(|e| e.ok().map(|e| e.path()))
         .collect();
 
-    // Сортируем для единообразного вывода
     entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     for (i, entry) in entries.iter().enumerate() {
@@ -61,33 +53,32 @@ fn print_tree(
         let line = if is_last { "└── " } else { "├── " };
         let new_prefix = if is_last { "    " } else { "│   " };
 
-        let display_name = entry.file_name()
-            .unwrap_or_default()
-            .to_string_lossy();
+        let name = entry.file_name().unwrap_or_default().to_string_lossy();
 
-        // Цвета в зависимости от типа
         if entry.is_dir() {
-            colored_print(
-                &format!("{}{}{}", prefix, line, display_name),
-                Color::Blue,
-            )?;
+            print_entry(&format!("{}{}{}", prefix, line, name), use_color, Colour::Blue);
         } else {
-            colored_print(
-                &format!("{}{}{}", prefix, line, display_name),
-                Color::Yellow,
-            )?;
+            print_entry(&format!("{}{}{}", prefix, line, name), use_color, Colour::Yellow);
         }
 
-        // Рекурсия для папок
         if entry.is_dir() {
             print_tree(
                 entry.to_str().unwrap(),
                 &format!("{}{}", prefix, new_prefix),
                 current_depth + 1,
                 max_depth,
+                use_color,
             )?;
         }
     }
 
     Ok(())
+}
+
+fn print_entry(text: &str, use_color: bool, color: Colour) {
+    if use_color {
+        println!("{}", color.paint(text));
+    } else {
+        println!("{}", text);
+    }
 }
