@@ -1,6 +1,6 @@
 [package]
 name = "tfile-rs"
-version = "0.1.0"
+version = "1.0.2"
 edition = "2021"
 license = "MIT"
 
@@ -10,3 +10,4 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }  # Для аргументов командной строки
+termcolor = "1.4"

@@ -1,16 +1,20 @@
-use std::path::Path;
-use std::{fs};
+use std::{
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use clap::Parser;
 
-/// Утилита для вывода дерева папок
+/// Аргументы командной строки
 #[derive(Parser)]
-#[clap(version = "1.0", author = "Geo123qwe")]
+#[clap(version, author)]
 struct Args {
     /// Путь к папке (по умолчанию — текущая)
     path: Option<String>,
 
     /// Глубина рекурсии
-    #[clap(short, long, default_value = "10")]
+    #[clap(short, long, default_value = "5")]
     depth: usize,
 }
 
@@ -24,27 +28,62 @@ fn main() {
     }
 }
 
-fn print_tree(path: &str, prefix: &str, depth: usize, max_depth: usize) -> std::io::Result<()> {
-    if depth >= max_depth {
+/// Вывод цветного текста
+fn colored_print(text: &str, color: Color) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(ColorSpec::new().set_fg(Some(color)))?;
+    writeln!(&mut stdout, "{}", text)?;
+    stdout.reset()?;
+    Ok(())
+}
+
+/// Рекурсивный вывод дерева папок
+fn print_tree(
+    path: &str,
+    prefix: &str,
+    current_depth: usize,
+    max_depth: usize,
+) -> io::Result<()> {
+    if current_depth >= max_depth {
         return Ok(());
     }
 
     let dir = fs::read_dir(path)?;
-    let mut entries: Vec<_> = dir.collect::<Result<_, _>>()?;
-    entries.sort_by_key(|e| e.file_name());
+    let mut entries: Vec<PathBuf> = dir
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .collect();
+
+    // Сортируем для единообразного вывода
+    entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     for (i, entry) in entries.iter().enumerate() {
         let is_last = i == entries.len() - 1;
         let line = if is_last { "└── " } else { "├── " };
         let new_prefix = if is_last { "    " } else { "│   " };
 
-        println!("{}{}{}", prefix, line, entry.file_name().to_string_lossy());
+        let display_name = entry.file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
 
-        if entry.file_type()?.is_dir() {
+        // Цвета в зависимости от типа
+        if entry.is_dir() {
+            colored_print(
+                &format!("{}{}{}", prefix, line, display_name),
+                Color::Blue,
+            )?;
+        } else {
+            colored_print(
+                &format!("{}{}{}", prefix, line, display_name),
+                Color::Yellow,
+            )?;
+        }
+
+        // Рекурсия для папок
+        if entry.is_dir() {
             print_tree(
-                entry.path().to_str().unwrap(),
+                entry.to_str().unwrap(),
                 &format!("{}{}", prefix, new_prefix),
-                depth + 1,
+                current_depth + 1,
                 max_depth,
             )?;
         }
